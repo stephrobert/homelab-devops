@@ -1,0 +1,32 @@
+---
+- name: Configure Rebond
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+  vars:
+    user: bob
+    devops_tools:
+      - { name: direnv, version: 2.33.0 }
+      - { name: helm, version: 3.14.0 }
+      - { name: kubectl, version: 1.25.0 }
+      - { name: glab, version: 1.36.0 }
+      - { name: hadolint, version: 2.10.0 }
+      - { name: jq, version: 1.7.1 }
+      - { name: k9s, version: 0.31.7 }
+      - { name: krew, version: 0.4.4 }
+      - { name: kubectl, version: 1.29.1 }
+      - { name: rclone, version: 1.65.2 }
+      - { name: terraform, version: 1.7.2 }
+      - { name: opentofu, version: 1.6.1 }
+      - { name: trivy, version: 0.32.0 }
+      - { name: yq, version: 4.40.5 }
+      - { name: packer, version: 1.10.1 }
+  roles:
+    - role: stephrobert.bootstrap
+    - role: rebond
+    - role: stephrobert.sshd
+      vars:
+        sshd_allowagentforwarding: "yes"
+        sshd_allowtcpforwarding: "yes"
+        sshd_allowusers: bob

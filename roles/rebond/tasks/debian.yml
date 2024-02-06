@@ -1,0 +1,31 @@
+- name: Download Hashicorp GPG key
+  ansible.builtin.apt_key:
+    url: https://apt.releases.hashicorp.com/gpg
+- name: Add Hashicorp repository
+  ansible.builtin.apt_repository:
+    repo: deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
+    state: present
+    update_cache: false
+- name: Install Packages
+  ansible.builtin.apt:
+    name:
+      - zsh
+      - keyboard-configuration
+      - net-tools
+      - fzf
+      - ripgrep
+      - unzip
+      - nfs-common
+    update_cache: true
+  tags: packages
+- name: Change local to FR
+  community.general.locale_gen:
+    name: fr_FR.UTF-8
+    state: present
+  tags: local
+- name: dpkg-reconfigure
+  shell: |
+    dpkg-reconfigure -f noninteractive keyboard-configuration && \
+    localectl set-locale LANG=fr_FR.UTF8 LANGUAGE=fr_FR.UTF8 && \
+    timedatectl set-timezone Europe/Paris && \
+    update-locale LANG=fr_FR.UTF-8

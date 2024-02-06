@@ -1,0 +1,29 @@
+---
+- name: Install Packages
+  community.general.pacman:
+    name:
+      - btop
+      - htop
+      - docker
+      - vagrant
+      - bridge-utils
+      - virt-manager
+      - libguestfs
+      - base-devel
+      - qemu-base
+      - linux-headers
+      - zsh
+      - unzip
+      - python-pipx
+      - fzf
+      - python-pipenv
+    update_cache:
+    state: present
+    force: true
+  tags: packages
+- name: Start libvirt
+  ansible.builtin.service:
+    name: libvirtd
+    state: restarted
+    enabled: true
+

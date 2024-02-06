@@ -1,0 +1,55 @@
+---
+- name: Add yum docker repository
+  ansible.builtin.yum_repository:
+    name: docker-ce-stable
+    description: Docker CE Stable - $basearch
+    baseurl: https://download.docker.com/linux/fedora/$releasever/$basearch/stable
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/fedora/gpg
+- name: Add yum Hashicorp repo
+  ansible.builtin.yum_repository:
+    name: hashicorp
+    baseurl: https://rpm.releases.hashicorp.com/fedora/$releasever/$basearch/stable
+    description: Hashicorp Stable - $basearch
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: https://rpm.releases.hashicorp.com/gpg
+    repo_gpgcheck: yes
+    state: present
+- name: install all applications
+  ansible.builtin.yum:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+      - vagrant
+      - zsh
+      - btop
+      - htop
+      - qemu-kvm
+      - ksmtuned
+      - libvirt-daemon-kvm
+      - libvirt-client
+      - virt-install
+      - libvirt-devel
+      - vagrant-libvirt
+      - ruby-devel
+      - rubygem-ruby-libvirt
+      - net-tools
+      - pipx
+      - pipenv
+      - fzf
+      - glibc-langpack-fr
+      - glibc-common
+      - langpacks-fr
+      - util-linux
+    state: present
+    update_cache: true
+  tags: packages
+- name: Start libvirtd service
+  ansible.builtin.service:
+    name: libvirtd
+    state: started
+    enabled: true

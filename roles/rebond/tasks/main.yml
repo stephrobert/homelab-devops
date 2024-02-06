@@ -1,0 +1,118 @@
+---
+- name: Check swap State
+  ansible.builtin.stat:
+    path: /swapfile
+  register: swap_file_check
+  when: ansible_virtualization_type != "docker"
+- name: Umount swap | {{ inventory_hostname }}
+  ansible.posix.mount:
+    name: swap
+    fstype: swap
+    state: absent
+  when: ansible_virtualization_type != "docker" and swap_file_check.stat.exists
+- name: Swap Off | {{ inventory_hostname }}
+  ansible.builtin.shell:
+    cmd: swapoff -a
+  when: ansible_virtualization_type != "docker" and ansible_swaptotal_mb > 0
+- name: Configure keyboard
+  ansible.builtin.copy:
+    src: "files/{{ item }}"
+    dest: "/etc/default/{{ item }}"
+    force: true
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - keyboard
+    - locale
+- name: Import tasks to install package for {{ ansible_os_family | lower }}
+  ansible.builtin.include_tasks: "{{ ansible_os_family | lower }}.yml"
+- name: Set timezone
+  community.general.timezone:
+    name: "Europe/Paris"
+  tags: keyboard
+- name: Check zsh install
+  ansible.builtin.stat:
+    path: "/home/{{ user }}/.oh-my-zsh"
+  register: ohmyzsh_file_check
+  become: false
+- name: Get Oh my zsh
+  become: false
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
+  when: not ohmyzsh_file_check.stat.exists
+- name: Uncomment PATH
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    regexp: "^# export PATH.*$"
+    line: "export PATH=$HOME/.local/bin:$PATH"
+  become: false
+- name: Install oh_my_zsh theme
+  ansible.builtin.git:
+    repo: "https://github.com/romkatv/powerlevel10k.git"
+    dest: "/home/{{ user }}/.oh-my-zsh/custom/themes/powerlevel10k"
+    version: HEAD
+  become: false
+- name: Install oh_my_zsh plugin zsh-syntax-highlighting
+  ansible.builtin.git:
+    repo: "https://github.com/zsh-users/zsh-syntax-highlighting.git"
+    dest: "/home/{{ user }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    force: true
+    version: HEAD
+  become: false
+- name: Install oh_my_zsh plugin zsh-autosuggestions
+  ansible.builtin.git:
+    repo: "https://github.com/zsh-users/zsh-autosuggestions.git"
+    dest: "/home/{{ user }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    force: true
+  become: false
+- name: Add plugin to .zshrc
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    regexp: "^plugins=.*$"
+    line: "plugins=(git gcloud docker kubectl colored-man-pages ansible asdf aws ubuntu direnv fzf docker-compose zsh-syntax-highlighting zsh-autosuggestions helm pip poetry python ripgrep sudo terraform vagrant vault zsh-interactive-cd)"
+  become: false
+- name: change theme zshrc
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    regexp: "^ZSH_THEME=.*$"
+    line: 'ZSH_THEME="powerlevel10k/powerlevel10k"'
+  become: false
+- name: Add PATH
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    state: present
+    regexp: '^# export (PATH=\")({{ item }}:)?((?(2).*?(?!(?:.\"))|.*?(?!(?:{{ item }}))))(:{{ item }})?((?(4).*|\"))'
+    line: '\1\3:{{ item }}\5'
+    backrefs: true
+  loop:
+    - "$HOME/.local/bin"
+    - "$HOME/.asdf/bin"
+  become: false
+- name: Install asdf
+  ansible.builtin.git:
+    repo: "https://github.com/asdf-vm/asdf.git"
+    dest: "/home/{{ user }}/.asdf"
+    version: v0.10.2
+  become: false
+- name: Add asdf to .zshrc
+  ansible.builtin.lineinfile:
+    path: "/home/{{ user }}/.zshrc"
+    regexp: "{{ item }}"
+    line: "{{ item }}"
+  with_items:
+    - ". $HOME/.asdf/asdf.sh"
+    - "fpath=(${ASDF_DIR}/completions $fpath)"
+    - "autoload -Uz compinit && compinit"
+  become: false
+- name: Add plugin asdf
+  ansible.builtin.shell: "zsh -lc 'source /home/{{ user }}/.asdf/asdf.sh && /home/{{ user }}/.asdf/bin/asdf plugin add {{ item.name }}' || true"
+  with_items: "{{ devops_tools }}"
+  become: false
+- name: Install Tools with asdf
+  ansible.builtin.shell: "zsh -lc 'source /home/{{ user }}/.asdf/asdf.sh && /home/{{ user }}/.asdf/bin/asdf install {{ item.name }} {{ item.version }}'"
+  with_items: "{{ devops_tools }}"
+  become: false
+- name: Define global version asdf
+  ansible.builtin.shell: "zsh -lc 'source /home/{{ user }}/.asdf/asdf.sh && /home/{{ user }}/.asdf/bin/asdf global {{ item.name }} {{ item.version }}'"
+  with_items: "{{ devops_tools }}"
+  become: false
