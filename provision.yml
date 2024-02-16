@@ -1,0 +1,25 @@
+---
+- name: Configure All
+  hosts: all
+  gather_facts: false
+  become: true
+  become_method: ansible.builtin.su
+  vars:
+    user: bob
+  tasks:
+    - name: Make bob sudoers
+      community.general.sudoers:
+        name: "{{ user }}"
+        user: "{{ user }}"
+        nopassword: true
+        commands: ALL
+  roles:
+    - role: stephrobert.bootstrap
+    - role: stephrobert.motd
+      vars:
+        motd_banner: " {{ ansible_hostname }} "
+    - role: stephrobert.sshd
+      vars:
+        sshd_allowagentforwarding: "yes"
+        sshd_allowtcpforwarding: "yes"
+        sshd_allowusers: bob

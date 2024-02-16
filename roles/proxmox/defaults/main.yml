@@ -1,0 +1,19 @@
+---
+# defaults file for proxmox
+proxmox_interfaces : |
+  source /etc/network/interfaces.d/*
+
+  auto lo
+  iface lo inet loopback
+
+  auto enp2s0
+  iface enp2s0 inet dhcp
+
+  iface enp3s0 inet manual
+
+  auto vmbr0
+  iface vmbr0 inet static
+          address 192.168.3.1/24
+          bridge-ports enp3s0
+          bridge-stp off
+          bridge-fd 0

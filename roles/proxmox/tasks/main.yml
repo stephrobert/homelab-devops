@@ -1,0 +1,125 @@
+---
+- name: Remove packages
+  become: true
+  ansible.builtin.package:
+    name:
+      - os-prober
+    state: absent
+- name: Install packages
+  become: true
+  ansible.builtin.package:
+    name:
+      - gpg
+    state: present
+- name: Clean /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^127.0.1.1.*"
+    owner: root
+    group: root
+    mode: "0644"
+    state: absent
+- name: Add host in /etc/hosts
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ ansible_all_ipv4_addresses[0] }}"
+    owner: root
+    group: root
+    mode: "0644"
+    state: present
+    line: "{{ ansible_all_ipv4_addresses[0] }} {{ ansible_hostname }}.{{ domainname }} {{ ansible_hostname }}"
+- name: Set IPV4
+  become: true
+  ansible.posix.sysctl:
+    sysctl_file: /etc/sysctl.d/proxmox.conf
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+  loop:
+    - {name: net.ipv4.conf.all.rp_filter, value: 1 }
+    - {name: net.ipv4.icmp_echo_ignore_broadcasts, value: 1 }
+    - {name: net.ipv4.ip_forward, value: 1 }
+- name: Add proxmox gpg key
+  become: true
+  ansible.builtin.get_url:
+    url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+    dest: "/etc/apt/trusted.gpg.d/proxmox-release-{{ ansible_distribution_release }}.gpg"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Add proxmoxve archive repository and update cache
+  become: true
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription"
+    state: present
+    update_cache: true
+- name: Remove repo
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+    state: absent
+# - name: Full upgrade
+#   become: true
+#   ansible.builtin.apt:
+#     update_cache: true
+#     upgrade: full
+- name: Install Proxmox and tools
+  become: true
+  ansible.builtin.package:
+    name:
+      - proxmox-ve
+      - ksm-control-daemon
+      - locales-all
+      - chrony
+      - libguestfs-tools
+    state: present
+- name: Remove repo
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-enterprise.list
+    state: absent
+- name: Remove kernel
+  become: true
+  ansible.builtin.package:
+    name: "linux-image-6.1*"
+    state: absent
+- name: Copy interface
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/network/interfaces
+    content: "{{ proxmox_interfaces }}"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Reload networking
+  become: true
+  ansible.builtin.command:
+    cmd: ifreload -a
+- name: Wait for Proxmox to come back online
+  ansible.builtin.wait_for:
+    port: 22
+    host: '{{ ansible_host }}'
+    timeout: 60
+- name: Copy certificats
+  become: true
+  ansible.builtin.copy:
+    src: proxmox1.robert.local.pem
+    dest: /etc/pve/nodes/proxmox1/pveproxy-ssl.pem
+    owner: root
+    group: www-data
+    mode: "0640"
+- name: Copy certificats
+  become: true
+  ansible.builtin.copy:
+    src: proxmox1.robert.local-key.pem
+    dest: /etc/pve/nodes/proxmox1/pveproxy-ssl.key
+    owner: root
+    group: www-data
+    mode: "0640"
+- name: Restart pve proxy
+  become: true
+  ansible.builtin.service:
+    name: pveproxy
+    state: restarted
