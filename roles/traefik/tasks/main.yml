@@ -11,7 +11,7 @@
 - name: Create folder
   become: true
   ansible.builtin.file:
-    path: "{ item }}"
+    path: "{{ item }}"
     state: directory
     owner: traefik
     group: traefik
