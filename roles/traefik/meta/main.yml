@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: Stephane ROBERT
+  role_name: traefik
+  namespace: stephrobert
+  description: Install Traefik
+  company: none
+  license: MLP2
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+  galaxy_tags:
+    - virtualization
+dependencies: []

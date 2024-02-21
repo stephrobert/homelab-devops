@@ -1,0 +1,14 @@
+[Unit]
+Description=traefik service
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+Restart=on-failure
+TimeoutStopSec=300
+ExecStart=/opt/traefik/bin/traefik --configFile=/etc/traefik/traefik.yml
+
+[Install]
+WantedBy=multi-user.target

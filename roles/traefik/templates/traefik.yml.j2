@@ -1,0 +1,28 @@
+---
+global:
+  sendAnonymousUsage: false
+  checkNewVersion: false
+
+api:
+  dashboard: true
+
+log:
+  filePath: "/var/log/traefik.log"
+  format: common
+  level: "{{ traefik_log_level }}"
+
+providers:
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"

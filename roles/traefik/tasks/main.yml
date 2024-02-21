@@ -1,0 +1,87 @@
+- name: Create group
+  become: true
+  ansible.builtin.group:
+    name: traefik
+    state: present
+- name: Create traefik user
+  become: true
+  ansible.builtin.user:
+    name: traefik
+    state: present
+- name: Create folder
+  become: true
+  ansible.builtin.file:
+    path: "{ item }}"
+    state: directory
+    owner: traefik
+    group: traefik
+    mode: "0750"
+  loop:
+    - /opt/traefik/bin
+    - /etc/traefik/
+    - etc/traefik/dynamic
+- name: Download Traefik binaire
+  become: true
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "https://github.com/traefik/traefik/releases/download/v{{ traefik_version }}/traefik_v{{ traefik_version }}_linux_amd64.tar.gz"
+    dest: /opt/traefik/bin/
+    mode: "0755"
+    owner: traefik
+    group: traefik
+- name: Install Taefik Configuration
+  become: true
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: /etc/traefik/traefik.yml
+    owner: traefik
+    group: traefik
+    mode: "0644"
+- name: Create Taefik Service
+  become: true
+  ansible.builtin.template:
+    src: traefik.service.j2
+    dest: /etc/traefik/trafik.yml
+    owner: traefik
+    group: traefik
+    mode: "0644"
+  notify: Restart Traefik
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+- name: Start Traefik Service
+  become: true
+  ansible.builtin.service:
+    name: traefik.service
+    state: started
+    enabled: true
+- name: Copy certificats
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item.name }}"
+    dest: "{{ item.dest }}"
+    owner: traefik
+    group: traefik
+    mode: "06400"
+  loop:
+    - { name: "traefik.crt", dest: "/etc/traefik/traefik.crt" }
+    - { name: "traefik.key", dest: "/etc/traefik/traefik.key" }
+- name: Copy Dynamic Certificats Declarations
+  become: true
+  ansible.builtin.template:
+    src: certificats.yml.j2
+    dest: /etc/traefik/dynamic/certificats.yml
+    owner: traefik
+    group: traefik
+    mode: "0640"
+- name: Create dynamic config files
+  become: true
+  ansible.builtin.copy:
+    content: "{{ item.0.content | to_yaml }}"
+    dest: "/etc/traefik/dynamic/{{ item.0.filename }}"
+    owner: traefik
+    group: traefik
+    mode: "0640"
+  loop:
+    - "{{ traefik_dynamics }}"

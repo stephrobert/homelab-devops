@@ -1,0 +1,34 @@
+---
+- name: Install Traefik
+  hosts: localhost
+  connection: local
+  roles:
+    - role: traefik
+      vars:
+        traefik_version: 2.11.0
+        traefik_log_level: "debug"
+        traefik_dynamics:
+          - filename: "proxmox.yml"
+            content:
+              http:
+                middlewares:
+                  test-ipallow:
+                    ipAllowList:
+                      sourceRange:
+                        - "127.0.0.1/32"
+                        - "192.168.1.0/24"
+                        - "10.8.0.0/24"
+                routers:
+                  my-secure-router:
+                    rule: "Host(`proxmox1.robert.local`)"
+                    entryPoints:
+                      - "websecure"
+                    service: proxmox
+                    tls: {}
+                    middlewares:
+                      - test-ipallow
+                services:
+                  proxmox:
+                    loadBalancer:
+                      servers:
+                        - url: https://proxmox1.robert.local:8006
